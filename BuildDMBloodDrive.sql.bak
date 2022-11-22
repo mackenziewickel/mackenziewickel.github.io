@@ -1,0 +1,123 @@
+-- BloodDriveDM developed and written by MacKenzie Wickel
+-- Written exclusively for INFO 3300 
+-----------------------------------------------------------
+IF NOT EXISTS(SELECT * FROM sys.databases
+	WHERE NAME = N'BloodDriveDM')
+	CREATE DATABASE BloodDriveDM
+GO 
+--
+USE BloodDriveDM
+GO
+--deleting tables
+IF EXISTS(
+	SELECT *
+	FROM sys.tables
+	WHERE NAME = N'FactBloodStock'
+	)
+	DROP TABLE FactBloodStock;
+--
+IF EXISTS(
+	SELECT *
+	FROM sys.tables
+	WHERE NAME = N'DimSupply'
+	)
+	DROP TABLE DimSupply;
+--
+IF EXISTS(
+	SELECT *
+	FROM sys.tables
+	WHERE NAME = N'DimDonorDemographics'
+	)
+	DROP TABLE DimDonorDemographics;
+--
+IF EXISTS(
+	SELECT *
+	FROM sys.tables
+	WHERE NAME = N'DimStaffing'
+	)
+	DROP TABLE DimStaffing;
+-- 
+IF EXISTS(
+	SELECT *
+	FROM sys.tables
+	WHERE NAME = N'DimDate'
+	)
+	DROP TABLE DimDate;
+-- creating tables
+CREATE TABLE DimDate 
+	(Date_SK			INT CONSTRAINT pk_date_sk PRIMARY KEY, 
+	Date				DATE,
+	FullDate			NCHAR(10), -- Date in MM-dd-yyyy format
+	DayOfMonth			INT, -- Field will hold day number of Month
+	DayName				NVARCHAR(9), -- Contains name of the day, Sunday, Monday 
+	DayOfWeek			INT, -- First Day Sunday=1 and Saturday=7
+	DayOfWeekInMonth	INT, -- 1st Monday or 2nd Monday in Month
+	DayOfWeekInYear		INT,
+	DayOfQuarter		INT,
+	DayOfYear			INT,
+	WeekOfMonth			INT, -- Week Number of Month 
+	WeekOfQuarter		INT, -- Week Number of the Quarter
+	WeekOfYear			INT, -- Week Number of the Year
+	Month				INT, -- Number of the Month 1 to 12{}
+	MonthName			NVARCHAR(9), -- January, February etc
+	MonthOfQuarter		INT, -- Month Number belongs to Quarter
+	Quarter				NCHAR(2), 
+	QuarterName			NVARCHAR(9), -- First,Second...
+	Year				INT, -- Year value of Date stored in Row
+	YearName			NCHAR(7), -- CY 2017,CY 2018
+	MonthYear			NCHAR(10), -- Jan-2018,Feb-2018
+	MMYYYY				INT,
+	FirstDayOfMonth		DATE,
+	LastDayOfMonth		DATE,
+	FirstDayOfQuarter	DATE,
+	LastDayOfQuarter	DATE,
+	FirstDayOfYear		DATE,
+	LastDayOfYear		DATE,
+	IsHoliday			BIT, -- Flag 1=National Holiday, 0-No National Holiday
+	IsWeekday			BIT, -- 0=Week End ,1=Week Day
+	Holiday				NVARCHAR(50), -- Name of Holiday in US
+	Season				NVARCHAR(10) -- Name of Season
+	);
+--
+CREATE TABLE DimStaffing
+	(Staffing_SK			INT IDENTITY (1,1) NOT NULL CONSTRAINT pk_staffing_sk PRIMARY KEY,
+	Staffing_AK				INT NOT NULL,
+	DOB						DATE  NOT NULL,
+	EmployeeType			NVARCHAR(20) NOT NULL,
+	BankCity				NVARCHAR(35) NOT NULL,
+	BankName				NVARCHAR(50) NOT NULL,
+	StartDate				DATETIME,
+	EndDate					DATETIME
+	);
+--
+CREATE TABLE DimDonorDemographics
+	(DonorDemographics_SK			INT IDENTITY (1,1) NOT NULL CONSTRAINT pk_donordemographics_sk PRIMARY KEY,
+	DonorDemographics_AK			INT NOT NULL,
+	BloodType						NVARCHAR(5) NOT NULL,
+	DOB								DATE NOT NULL,
+	HealthCondition					NVARCHAR (50) NOT NULL
+	);
+--
+
+CREATE TABLE DimSupply
+	(Supply_SK				INT IDENTITY(1,1) NOT NULL CONSTRAINT pk_product_sk PRIMARY KEY,
+	Supply_AK				INT NOT NULL,
+	RequestBloodType		NVARCHAR (5) NOT NULL,
+	HospitalName			NVARCHAR (50) NOT NULL,
+	HospitalCity			NVARCHAR (35) NOT NULL
+	);
+--
+CREATE TABLE FactBloodStock
+	(BloodStock_DD				INT IDENTITY NOT NULL , --need a degenerative dimension for PK
+	DonorDemographics_SK		INT NOT NULL,
+	Supply_SK					INT NOT NULL,
+	Staffing_SK					INT NOT NULL,
+	Date_SK						INT NOT NULL,
+	PintsDonated				INT,
+	PintsRequested				INT,
+	CONSTRAINT pk_fact_blood_stock PRIMARY KEY (BloodStock_DD),
+	CONSTRAINT fk_dim_donordemographics FOREIGN KEY (DonorDemographics_SK) REFERENCES DimDonorDemographics(DonorDemographics_SK),
+	CONSTRAINT fk_dim_supply FOREIGN KEY (Supply_SK) REFERENCES DimSupply(Supply_SK),
+	CONSTRAINT fk_dim_staffing FOREIGN KEY (Staffing_SK) REFERENCES DimStaffing(Staffing_SK),
+	CONSTRAINT fk_dim_date FOREIGN KEY (Date_SK) REFERENCES DimDate(Date_SK)
+	);
