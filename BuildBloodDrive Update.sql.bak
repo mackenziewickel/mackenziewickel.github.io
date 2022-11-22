@@ -1,0 +1,288 @@
+--MacKenzie Wickel
+--Jean Ben Booker
+-- BloodDrive database developed and written by Kenzie Wickel
+-- Originally Written: September 2005 | Updated: April 2021
+-----------------------------------------------------------
+-- Replace <data_path> with the full path to this file 
+-- Ensure it ends with a backslash 
+-- E.g., C:\MyDatabases\ See line 17
+-----------------------------------------------------------
+IF NOT EXISTS(SELECT * FROM sys.databases
+	WHERE NAME = N'BloodDrive')
+	CREATE DATABASE BloodDrive
+GO
+USE BloodDrive
+--
+-- Alter the path so the script can find the CSV files 
+--
+DECLARE @data_path NVARCHAR(256);
+SELECT @data_path = 'C:\Users\Wickel\Desktop\INFO 3240\project\';
+--
+-- Delete existing tables
+--
+IF EXISTS(
+	SELECT *
+	FROM sys.tables
+	WHERE NAME = N'BLOODSTOCK'
+       )
+	DROP TABLE BLOODSTOCK;
+--
+IF EXISTS(
+	SELECT *
+	FROM sys.tables
+	WHERE NAME = N'REQUEST'
+       )
+	DROP TABLE REQUEST;
+--
+IF EXISTS(
+	SELECT *
+	FROM sys.tables
+	WHERE NAME = N'BANKHOSPITAL'
+       )
+	DROP TABLE BANKHOSPITAL;
+--
+IF EXISTS(
+	SELECT *
+	FROM sys.tables
+	WHERE NAME = N'HOSPITAL'
+       )
+	DROP TABLE HOSPITAL;
+--
+IF EXISTS(
+	SELECT *
+	FROM sys.tables
+	WHERE NAME = N'PERSONNELBANK'
+       )
+	DROP TABLE PERSONNELBANK;
+--
+IF EXISTS(
+	SELECT *
+	FROM sys.tables
+	WHERE NAME = N'BLOODTRANSACTION'
+       )
+	DROP TABLE BLOODTRANSACTION;
+--
+IF EXISTS(
+	SELECT *
+	FROM sys.tables
+	WHERE NAME = N'MEDICALPERSONNEL'
+       )
+	DROP TABLE MEDICALPERSONNEL;
+--
+IF EXISTS(
+	SELECT *
+	FROM sys.tables
+	WHERE NAME = N'BANK'
+       )
+	DROP TABLE BANK;
+--
+IF EXISTS(
+	SELECT *
+	FROM sys.tables
+	WHERE NAME = N'DONOR'
+       )
+	DROP TABLE DONOR;
+--
+-- Create tables
+--
+CREATE TABLE DONOR
+(
+	DonorID  		INT CONSTRAINT pk_donor_id PRIMARY KEY,
+	FirstName		NVARCHAR(15) CONSTRAINT nn_donor_first_name NOT NULL,
+	LastName		NVARCHAR(20) CONSTRAINT nn_donor_last_name NOT NULL,
+    Address			NVARCHAR(35) CONSTRAINT nn_donor_address NOT NULL,
+	DonorPhoneNum 	NVARCHAR(14),
+	BloodType  		NVARCHAR(5)  CONSTRAINT nn_donor_blood_type NOT NULL,
+	City			NVARCHAR(20) CONSTRAINT nn_donor_city NOT NULL,
+	State			NVARCHAR(2)  CONSTRAINT nn_donor_state NOT NULL
+);
+--
+CREATE TABLE BANK
+(
+	BankID				INT CONSTRAINT pk_bank_id PRIMARY KEY,
+    BankName 			NVARCHAR(50) CONSTRAINT nn_bank_name NOT NULL,
+    Address				NVARCHAR(35) CONSTRAINT nn_bank_address NOT	NULL,
+	OpenDate			DATE CONSTRAINT nn_date_of_trans NOT NULL
+);
+--
+CREATE TABLE MEDICALPERSONNEL
+(
+	EmpID				INT CONSTRAINT pk_emp_id PRIMARY KEY,
+	FirstName			NVARCHAR(15) CONSTRAINT nn_medical_personnel_first_name						NOT NULL,
+	LastName			NVARCHAR(20) CONSTRAINT nn_medical_personnel_last_name						NOT NULL,
+    Address				NVARCHAR(35) CONSTRAINT nn_medical_personnel_address NOT					NULL,
+	City				NVARCHAR(20) CONSTRAINT nn_donor_city NOT NULL,
+	State				NVARCHAR(2)  CONSTRAINT nn_donor_state NOT NULL,
+    EmpPhoneNum 		NVARCHAR(14),
+	BankID 				INT CONSTRAINT fk_medical_personnel_bank_id FOREIGN KEY
+		REFERENCES BANK (BankID),
+	HourlyRate			INT CONSTRAINT nn_hourly_rate NOT NULL
+);
+--
+CREATE TABLE BLOODTRANSACTION
+(
+	BloodTransID  	INT CONSTRAINT pk_blood_transaction_id PRIMARY KEY,
+	PintsGiven		NUMERIC (3, 1) CONSTRAINT nn_pints_given NOT NULL,
+    DonorID 		INT CONSTRAINT fk_blood_transaction_donor_id FOREIGN KEY
+		REFERENCES DONOR (DonorID),
+    BankID 			INT CONSTRAINT fk_blood_transaction_bank_id FOREIGN KEY
+		REFERENCES BANK (BankID),
+    EmpID			INT CONSTRAINT fk_blood_transaction_emp_id FOREIGN KEY
+		REFERENCES MEDICALPERSONNEL (EmpID),
+	DateOfTrans		DATE CONSTRAINT nn_date_of_trans NOT NULL
+);
+--
+
+CREATE TABLE PERSONNELBANK
+(
+	EmpBankID		INT CONSTRAINT pk_emp_bank_id PRIMARY KEY,
+	BankID 			INT CONSTRAINT fk_personnel_bank_bank_id FOREIGN KEY
+		REFERENCES BANK (BankID),
+    EmpID			INT CONSTRAINT fk_personnel_bank_emp_id FOREIGN KEY
+		REFERENCES MEDICALPERSONNEL (EmpID)
+);
+--
+CREATE TABLE HOSPITAL
+(
+	HospitalID			INT CONSTRAINT pk_hospital_id PRIMARY KEY,
+    HospitalName 		NVARCHAR(50) CONSTRAINT nn_hospital_name NOT NULL,
+    Address				NVARCHAR(35) CONSTRAINT nn_hospital_address NOT	NULL
+);
+--
+CREATE TABLE BANKHOSPITAL
+(
+	BankHospitalID		INT CONSTRAINT pk_bank_hospital_id PRIMARY KEY,
+	BankID				INT CONSTRAINT fk_bank_hospital_bank_id FOREIGN KEY
+		REFERENCES BANK (BankID),
+	HospitalID			INT CONSTRAINT fk_bank_hospital_hospital_id FOREIGN KEY
+		REFERENCES HOSPITAL (HospitalID)
+);
+--
+CREATE TABLE REQUEST
+(
+	RequestID			INT CONSTRAINT pk_request_id PRIMARY KEY,
+	Pints				NUMERIC (3, 1) CONSTRAINT nn_pints NOT NULL,
+	HospitalID			INT CONSTRAINT fk_request_hospital_id FOREIGN KEY
+		REFERENCES HOSPITAL (HospitalID),
+	BloodType 			NVARCHAR(5)  CONSTRAINT fk_reqeust_blood_type FOREIGN KEY 	  			
+		REFERENCES DONOR (BloodType)
+);
+--
+CREATE TABLE BLOODSTOCK
+(
+	BagID				INT CONSTRAINT pk_bag_id PRIMARY KEY,
+	BankID				INT CONSTRAINT fk_blood_stock_bank_id FOREIGN KEY
+		REFERENCES BANK (BankID),
+	BloodType 			NVARCHAR(5)  CONSTRAINT fk_blood_stock_blood_type FOREIGN KEY 	  			
+		REFERENCES DONOR (BloodType),
+	DonorID  			INT CONSTRAINT fk_blood_stock_donor_id FOREIGN KEY
+		REFERENCES DONOR (DonorID),
+	BloodTransID  		INT CONSTRAINT fk_blood_stock_blood_transaction_id FOREIGN KEY
+		REFERENCES BLOODTRANSACTION (BloodTransID),
+	EmpID				INT CONSTRAINT fk_blood_stock_personnel_bank_emp_id FOREIGN KEY
+		REFERENCES MEDICALPERSONNEL (EmpID),
+);
+
+--
+-- Load table data
+--
+EXECUTE (N'BULK INSERT DONOR FROM ''' + @data_path + N'DONOR2.csv''
+WITH (
+	CHECK_CONSTRAINTS,
+	CODEPAGE=''ACP'',
+	DATAFILETYPE = ''char'',
+	FIELDTERMINATOR= '','',
+	ROWTERMINATOR = ''\n'',
+	KEEPIDENTITY,
+	TABLOCK
+	);
+');
+--
+--
+EXECUTE (N'BULK INSERT BANK FROM ''' + @data_path + N'BANK.csv''
+WITH (
+	CHECK_CONSTRAINTS,
+	CODEPAGE=''ACP'',
+	DATAFILETYPE = ''char'',
+	FIELDTERMINATOR= '','',
+	ROWTERMINATOR = ''\n'',
+	KEEPIDENTITY,
+	TABLOCK
+	);
+');
+--
+EXECUTE (N'BULK INSERT MEDICALPERSONNEL FROM ''' + @data_path + N'MEDICALPERSONNEL2.csv''
+WITH (
+	CHECK_CONSTRAINTS,
+	CODEPAGE=''ACP'',
+	DATAFILETYPE = ''char'',
+	FIELDTERMINATOR= '','',
+	ROWTERMINATOR = ''\n'',
+	KEEPIDENTITY,
+	TABLOCK
+	);
+');
+--
+EXECUTE (N'BULK INSERT BLOODTRANSACTION FROM ''' + @data_path + N'BLOODTRANSACTION.csv''
+WITH (
+	CHECK_CONSTRAINTS,
+	CODEPAGE=''ACP'',
+	DATAFILETYPE = ''char'',
+	FIELDTERMINATOR= '','',
+	ROWTERMINATOR = ''\n'',
+	TABLOCK
+	);
+');
+--
+EXECUTE (N'BULK INSERT PERSONNELBANK FROM ''' + @data_path + N'PERSONNELBANK.csv''
+WITH (
+	CHECK_CONSTRAINTS,
+	CODEPAGE=''ACP'',
+	DATAFILETYPE = ''char'',
+	FIELDTERMINATOR= '','',
+	ROWTERMINATOR = ''\n'',
+	KEEPIDENTITY,
+	TABLOCK
+	);
+');
+--
+EXECUTE (N'BULK INSERT HOSPITAL FROM ''' + @data_path + N'HOSPITAL.csv''
+WITH (
+	CHECK_CONSTRAINTS,
+	CODEPAGE=''ACP'',
+	DATAFILETYPE = ''char'',
+	FIELDTERMINATOR= '','',
+	ROWTERMINATOR = ''\n'',
+	KEEPIDENTITY,
+	TABLOCK
+	);
+');
+--
+EXECUTE (N'BULK INSERT BANKHOSPITAL FROM ''' + @data_path + N'BANKHOSPITAL.csv''
+WITH (
+	CHECK_CONSTRAINTS,
+	CODEPAGE=''ACP'',
+	DATAFILETYPE = ''char'',
+	FIELDTERMINATOR= '','',
+	ROWTERMINATOR = ''\n'',
+	KEEPIDENTITY,
+	TABLOCK
+	);
+');
+--
+-- List table names and row counts for confirmation
+--
+GO
+SET NOCOUNT ON
+SELECT 'DONOR' AS "Table",			COUNT(*) AS "Rows"	FROM DONOR			UNION
+SELECT 'BLOODTRANSACTION',			COUNT(*)	FROM BLOODTRANSACTION	    UNION
+SELECT 'MEDICALPERSONNEL',			COUNT(*)		FROM MEDICALPERSONNEL  UNION
+SELECT 'PERSONNELBANK',				COUNT(*)		FROM PERSONNELBANK		UNION
+SELECT 'BANK',						COUNT(*)			FROM BANK	       UNION
+SELECT 'BANKHOSPITAL',				COUNT(*)		FROM BANKHOSPITAL       UNION
+SELECT 'HOSPITAL',					COUNT(*)			FROM HOSPITAL      	UNION
+SELECT 'REQEUST',					COUNT(*)			FROM REQUEST      	UNION
+SELECT 'BLOODSTOCK',				COUNT(*)			FROM BLOODSTOCK      	
+ORDER BY 1;
+SET NOCOUNT OFF
+GO
